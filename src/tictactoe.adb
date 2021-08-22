@@ -30,6 +30,44 @@ package body Tictactoe is
 
     type Game_Players is array (Player_Index) of Player_Info;
 
+    package Tile_Generator is
+
+        function Generate_Tile return Tile_Coord;
+
+        procedure Initialize;
+
+    end Tile_Generator;
+
+    package body Tile_Generator is
+        
+        package Board_Row_Generator is new Ada.Numerics.Discrete_Random(Board_Row);
+        use Board_Row_Generator;
+
+        Row_Generator : Generator;
+
+        procedure Initialize is
+        begin
+            Reset(Row_Generator);
+        end Initialize;
+
+        function Generate_Tile return Tile_Coord is
+            function Row_To_Column(Row : Board_Row) return Board_Column is
+            begin
+                case Row is
+                    when 'A' => return '1';
+                    when 'B' => return '2';
+                    when 'C' => return '3';
+                end case;
+            end Row_To_Column;
+
+            Row : constant Board_Row := Random(Row_Generator);
+            Column : constant Board_Column := Row_To_Column(Random(Row_Generator));
+        begin
+            return (Row, Column);
+        end Generate_Tile;
+
+    end Tile_Generator;
+
     function Tile_Mark_To_Char(Mark : Tile_Mark) return Character is
     begin
         case Mark is
@@ -150,28 +188,15 @@ package body Tictactoe is
         end Human_Select;
 
         function Computer_Select return Tile_Coord is
-            package Rand_Gen is new Ada.Numerics.Discrete_Random(Board_Row);
-            use Rand_Gen;
+            use Tile_Generator;
 
-            function Board_Row_To_Board_Column(Row : Board_Row) return Board_Column is
-            begin
-                case Row is
-                    when 'A' => return '1';
-                    when 'B' => return '2';
-                    when 'C' => return '3';
-                end case;
-            end Board_Row_To_Board_Column;
-
-            Row_Generator : Generator;
-            Random_Row : Board_Row;
-            Random_Column : Board_Column;
+            Tile : Tile_Coord;
         begin
             loop
-                Random_Row := Random(Row_Generator);
-                Random_Column := Board_Row_To_Board_Column(Random(Row_Generator));
-                exit when Board(Random_Row, Random_Column) = None;
+                Tile := Generate_Tile;
+                exit when Board(Tile.Row, Tile.Column) = None;
             end loop;
-            return (Random_Row, Random_Column);
+            return Tile;
         end Computer_Select;
 
         Tile : constant Tile_Coord := (case Player.Controller is
@@ -267,6 +292,8 @@ package body Tictactoe is
         Current_Player : Player_Info := Players(Player_Turn);
         Winning_Mark : Tile_Mark := None;
     begin
+        Tile_Generator.Initialize;
+
         for Turns in 1 .. 9 loop
             Print_Board(Board);
             Set_Marker(Current_Player, Board);
